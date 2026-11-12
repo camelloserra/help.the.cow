@@ -70,7 +70,13 @@
   .p { font-size: calc(var(--u)*3.5); line-height: 1.8; color: #d9d6ff; max-width: calc(var(--u)*170); }
   .p b { color: #7fe3ff; font-weight: normal; }
   .stats { font-size: calc(var(--u)*4); line-height: 2; color: #fff; }
-  .stats .rank { color: #5cff7a; }
+  .stats .rank { color: #5cff7a; margin-top: calc(var(--u)*3); }
+  .sum { display: grid; grid-template-columns: auto auto auto; column-gap: calc(var(--u)*4); row-gap: calc(var(--u)*1); align-items: baseline; }
+  .sum .l { text-align: left; } .sum .n { text-align: right; color: #7fe3ff; }
+  .sum .d { text-align: left; color: #8f8ad6; font-size: calc(var(--u)*3); }
+  .sum .rule { grid-column: 1 / -1; height: calc(var(--u)*.75); background: #d9d6ff; margin: calc(var(--u)*1) 0; }
+  .sum .tot { color: #ffe14d; font-size: calc(var(--u)*5); }
+  .dim { color: #8f8ad6; font-size: calc(var(--u)*3); }
   .stats .rec { color: #ffe14d; animation: blink .4s steps(1) infinite; }
   .btn { font-family: inherit; font-size: calc(var(--u)*5); color: #fff; background: #ff3d7f; cursor: pointer;
     border: var(--u) solid #fff; padding: calc(var(--u)*3) calc(var(--u)*5);
@@ -492,14 +498,17 @@ function showEnd() {
   const t = $('endTitle');
   t.textContent = won ? '¡VACA A SALVO!' : '¡ABDUCIDA!';
   t.className = won ? 'yellow' : 'pink';
-  $('endSub').textContent = won ? 'Los OVNIs se fueron con las manos vacías.' : 'La vaca ya va camino a otra galaxia.';
+  $('endSub').innerHTML = won ? 'Los OVNIs se fueron<br>con las manos vacías.' : 'La vaca ya va camino<br>a otra galaxia.<br><span class="dim">RESISTISTE ' + elapsed.toFixed(1) + ' S</span>';
+  const bonus = (won ? WIN_BONUS : 0) + saved * 1500, clickPts = score - bonus;
   $('endStats').innerHTML =
-    (won ? 'AGUANTASTE LOS 60 S<br>BONUS +' + WIN_BONUS + '<br>' : 'AGUANTASTE ' + elapsed.toFixed(1) + ' S<br>') +
-    clicks + ' CLICKS · ' + cps.toFixed(1) + ' POR SEG<br>' +
-    'VAQUITAS RESCATADAS ' + saved + '/2<br>' +
-    'PUNTOS ' + pad(score) + '<br>' +
-    '<span class="rank">' + rank + '</span>' +
-    (isRec ? '<br><span class="rec">¡NUEVO RÉCORD!</span>' : '');
+    '<div class="sum">' +
+      '<span class="l">BONUS</span><span class="n">+' + bonus + '</span><span class="d">(VAQUITAS ' + saved + '/2)</span>' +
+      '<span class="l">' + clicks + ' CLICKS</span><span class="n">+' + clickPts + '</span><span class="d">(' + cps.toFixed(1) + ' / SEG)</span>' +
+      '<span class="rule"></span>' +
+      '<span class="l tot">TOTAL</span><span class="n tot">' + pad(score) + '</span><span class="d"></span>' +
+    '</div>' +
+    '<div class="rank">' + rank + '</div>' +
+    (isRec ? '<div class="rec">¡NUEVO RÉCORD!</div>' : '');
   $('scrEnd').classList.add('on'); fitScreens();
   const b = $('btnAgain'); b.classList.add('locked');
   setTimeout(() => { b.classList.remove('locked'); b.classList.add('blink'); }, 1000);
