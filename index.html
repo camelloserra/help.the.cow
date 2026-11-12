@@ -83,6 +83,10 @@
   .bonus { font-size: calc(var(--u)*4.5); color: #ffe14d; margin-top: calc(var(--u)*2); margin-bottom: calc(var(--u)*-2.5); }
   .mob { display: none; }
   @media (pointer: coarse) { .desk { display: none; } .mob { display: inline; } .p { font-size: calc(var(--u)*4.2); } }
+  .yel { color: #ffe14d; }
+  .startTxt { font-family: inherit; font-size: calc(var(--u)*5); color: #7fe3ff; background: none; border: 0;
+    margin-top: calc(var(--u)*4); cursor: pointer; text-shadow: calc(var(--u)*.75) calc(var(--u)*.75) 0 #000; }
+  #scrTitle { cursor: pointer; }
   .small { font-size: calc(var(--u)*3); color: #8f8ad6; }
   #count { position: absolute; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center;
     font-size: calc(var(--u)*28); color: #ffe14d; pointer-events: none;
@@ -114,12 +118,9 @@
   <div id="scrTitle" class="screen on shadow"><div class="inner">
     <h1>HELP<br>THE COW</h1>
     <p class="p nw">Salva a la vaca del OVNI<br>antes de los 60 segundos.</p>
-    <div class="ctrl nw"><span class="desk">CLICK / ESPACIO</span><span class="mob">TAP</span></div>
-    <div class="bonus nw">BONUS VAQUITA</div>
-    <p class="p nw">Sube a rescatarla<br>y tráela al pasto.</p>
-    <button class="btn blink" id="btnStart">PRESS START</button>
-    <div class="small nw" id="titleBest">RÉCORD 000000</div>
-    <div class="small nw">© 1985 VACA GAMES · 1 CRÉDITO</div>
+    <p class="p nw yel">BONUS VAQUITA<br>Sube a rescatarla<br>y tráela al pasto.</p>
+    <button class="startTxt blink nw" id="btnStart"><span class="desk">CLICK / SPACEBAR TO START</span><span class="mob">TAP TO START</span></button>
+    <div id="titleBest" hidden></div>
   </div></div>
 
   <div id="scrEnd" class="screen shadow"><div class="inner">
@@ -514,7 +515,7 @@ function press(e) {
   e.stopPropagation(); if (e.cancelable) e.preventDefault();
   if (state === 'title' || ((state === 'won' || state === 'lost') && endShown && !$('btnAgain').classList.contains('locked'))) start();
 }
-['btnStart', 'btnAgain'].forEach(id => { $(id).addEventListener('pointerdown', press); $(id).addEventListener('click', press); });
+['scrTitle', 'btnStart', 'btnAgain'].forEach(id => { $(id).addEventListener('pointerdown', press); $(id).addEventListener('click', press); });
 function toggleMute() { muted = !muted; }
 addEventListener('keydown', e => {
   if (e.code === 'Space' || e.code === 'Enter') {
