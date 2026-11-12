@@ -16,6 +16,7 @@
     overflow: hidden; user-select: none; -webkit-user-select: none;
     touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   }
+  html, body { position: fixed; inset: 0; overscroll-behavior: none; }
   #stage { position: fixed; inset: 0; overflow: hidden; cursor: pointer; }
   canvas { position: absolute; left: 0; top: 0;
     image-rendering: pixelated; image-rendering: crisp-edges; }
@@ -75,14 +76,15 @@
   .btn:active { transform: translate(var(--u), var(--u)); box-shadow: 0 0 0 #000; }
   .btn.blink { animation: blink 1s steps(1) infinite; }
   .btn.locked { opacity: .35; pointer-events: none; animation: none; }
+  .ctrl { font-size: calc(var(--u)*6); color: #7fe3ff; }
+  .bonus { font-size: calc(var(--u)*4.5); color: #ffe14d; margin-top: calc(var(--u)*2); margin-bottom: calc(var(--u)*-2); }
+  .mob { display: none; }
+  @media (pointer: coarse) { .desk { display: none; } .mob { display: inline; } .p { font-size: calc(var(--u)*4.2); } }
   .small { font-size: calc(var(--u)*3); color: #8f8ad6; }
   #count { position: absolute; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center;
     font-size: calc(var(--u)*28); color: #ffe14d; pointer-events: none;
     text-shadow: calc(var(--u)*1.5) calc(var(--u)*1.5) 0 #ff3d7f, calc(var(--u)*3) calc(var(--u)*3) 0 #000; }
   #count.on { display: flex; }
-  #mute { position: absolute; left: calc(var(--u)*3); bottom: calc(var(--u)*3); z-index: 15;
-    font-family: inherit; font-size: calc(var(--u)*3); color: #8f8ad6; background: rgba(0,0,0,.4);
-    border: calc(var(--u)*.5) solid #8f8ad6; padding: var(--u) calc(var(--u)*1.5); cursor: pointer; }
   @keyframes blink { 50% { opacity: 0; } }
 </style>
 </head>
@@ -101,14 +103,17 @@
     <div id="meterLbl">OVNI</div>
     <div id="calfMark"></div>
     <div id="msg"></div>
-    <div id="hint">¡CLICK! ¡CLICK! ¡CLICK!</div>
+    <div id="hint"><span class="desk">¡CLICK! ¡CLICK! ¡CLICK!</span><span class="mob">¡TAP! ¡TAP! ¡TAP!</span></div>
   </div>
 
   <div id="count"></div>
 
   <div id="scrTitle" class="screen on shadow">
     <h1>HELP<br>THE COW</h1>
-    <p class="p">Un OVNI quiere llevarse a la vaca.<br><b>Hacé click</b>, tocá la pantalla o apretá <b>ESPACIO</b> sin parar para bajarla del rayo.<br>Aguantá <b>60 segundos</b>.<br>Si aparece una <b>vaquita</b>, dejate subir, agarrala y bajala: <b>+1500</b>.</p>
+    <p class="p">Salvá a la vaca del OVNI antes de los 60 segundos.</p>
+    <div class="ctrl"><span class="desk">CLICK / ESPACIO</span><span class="mob">TAP</span></div>
+    <div class="bonus">BONUS</div>
+    <p class="p">Si aparece vaquita, subí a rescatarla y traela al pasto.</p>
     <button class="btn blink" id="btnStart">PRESS START</button>
     <div class="small" id="titleBest">RÉCORD 000000</div>
     <div class="small">© 1985 VACA GAMES · 1 CRÉDITO</div>
@@ -121,7 +126,6 @@
     <button class="btn" id="btnAgain">OTRA VEZ</button>
   </div>
 
-  <button id="mute">SONIDO: SÍ</button>
   <div class="crt"></div>
   <div class="vig"></div>
 </div>
@@ -142,8 +146,13 @@ const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.r
 const lerp = (a, b, k) => a + (b - a) * k;
 
 /* ---------- sizing: fill the whole window (landscape on desktop, portrait on phones) ---------- */
+let lastIW = 0, lastIH = 0;
 function fit() {
-  const iw = innerWidth, ih = innerHeight;
+  const vv = window.visualViewport;
+  const iw = Math.round(vv ? vv.width : innerWidth), ih = Math.round(vv ? vv.height : innerHeight);
+  if (iw === lastIW && ih === lastIH && W) return;
+  lastIW = iw; lastIH = ih;
+  window.scrollTo(0, 0);
   // on tall (phone) screens use a narrower world so the pixels come out bigger
   let s = ih > iw * 1.1 ? Math.min(iw / 128, ih / 200) : Math.min(iw / 192, ih / 144);
   if (s >= 2) s = Math.floor(s);
@@ -485,12 +494,12 @@ stage.addEventListener('pointerdown', e => {
   initAudio();
   if (state === 'play') { e.preventDefault(); hit(); }
 });
-$('btnStart').addEventListener('click', start);
-$('btnAgain').addEventListener('click', start);
-const muteBtn = $('mute');
-muteBtn.addEventListener('pointerdown', e => e.stopPropagation());
-muteBtn.addEventListener('click', e => { e.stopPropagation(); toggleMute(); });
-function toggleMute() { muted = !muted; muteBtn.textContent = 'SONIDO: ' + (muted ? 'NO' : 'SÍ'); }
+function press(e) {
+  e.stopPropagation(); if (e.cancelable) e.preventDefault();
+  if (state === 'title' || ((state === 'won' || state === 'lost') && endShown && !$('btnAgain').classList.contains('locked'))) start();
+}
+['btnStart', 'btnAgain'].forEach(id => { $(id).addEventListener('pointerdown', press); $(id).addEventListener('click', press); });
+function toggleMute() { muted = !muted; }
 addEventListener('keydown', e => {
   if (e.code === 'Space' || e.code === 'Enter') {
     e.preventDefault();
@@ -520,7 +529,7 @@ function update(dt) {
     // second UFO
     if (!ufo2.on && elapsed >= UFO2_AT) { ufo2.on = true; ufo2.t = 0; flashMsg('¡LLEGÓ OTRO OVNI!', 2.4, 'red'); tune([880, 660, 880, 660, 880, 660], 0.12, 'square', 0.04); }
     if (ufo2.on) { ufo2.t += dt; if (ufo2.t > 1.6) ufo2.beam = Math.min(1, ufo2.beam + dt * 3); }
-    h += rate(elapsed) * (surgeOn ? 1.65 : 1) * (1 + 0.3 * ufo2.beam) * dt;
+    h += rate(elapsed) * (surgeOn ? 1.65 : 1) * (1 + 0.42 * ufo2.beam) * dt;
     // bonus calf
     if (calfTimes.length && elapsed >= calfTimes[0]) {
       calfTimes.shift();
@@ -583,7 +592,7 @@ function draw() {
 
   const baseX = COWX + Math.sin(T * 0.8) * 3, baseY = UFO_Y + Math.sin(T * 1.7) * 1.5;
   const cx = baseX + exitX, cy = baseY + exitY;
-  for (let i = 0; i < saved; i++) drawCalf(76 + i * 13, GROUND + 9, 0);
+  for (let i = 0; i < saved; i++) drawCalf(18 + i * 16, GROUND + 9, 0);
   if (beamStr > 0.01) drawBeam(cx, cy, beamStr, T, surgeOn);
 
   const cowBottom = lerp(GROUND + 6, baseY + 6, drawH);
@@ -651,7 +660,14 @@ function frame(now) {
   update(dt); draw(); hud();
   requestAnimationFrame(frame);
 }
-addEventListener('resize', fit); fit();
+function refit() { window.scrollTo(0, 0); fit(); }
+addEventListener('resize', refit);
+addEventListener('orientationchange', () => setTimeout(refit, 250));
+addEventListener('pageshow', refit);
+if (window.visualViewport) { visualViewport.addEventListener('resize', refit); visualViewport.addEventListener('scroll', () => window.scrollTo(0, 0)); }
+fit();
+// mobile browsers settle their toolbars after load: re-measure a few times during the first seconds
+[150, 500, 1000, 2000].forEach(ms => setTimeout(refit, ms));
 requestAnimationFrame(frame);
 })();
 </script>
