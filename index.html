@@ -16,7 +16,7 @@
     overflow: hidden; user-select: none; -webkit-user-select: none;
     touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   }
-  html, body { position: fixed; inset: 0; overscroll-behavior: none; }
+  html, body { position: fixed; inset: 0; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #stage { position: fixed; inset: 0; overflow: hidden; cursor: pointer; }
   canvas { position: absolute; left: 0; top: 0;
     image-rendering: pixelated; image-rendering: crisp-edges; }
@@ -57,8 +57,11 @@
   /* Screens */
   .screen { position: absolute; inset: 0; z-index: 10; display: none;
     flex-direction: column; align-items: center; justify-content: center; text-align: center;
-    gap: calc(var(--u)*4); padding: calc(var(--u)*6); background: rgba(4,3,18,.62); }
+    padding: calc(var(--u)*4); background: rgba(4,3,18,.62); overflow: hidden; }
   .screen.on { display: flex; }
+  .inner { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u)*4);
+    flex-shrink: 0; transform-origin: center center; }
+  .nw { white-space: nowrap; }
   h1 { font-size: calc(var(--u)*13); line-height: 1.15; color: #ffe14d; font-weight: normal;
     text-shadow: var(--u) var(--u) 0 #ff3d7f, calc(var(--u)*2) calc(var(--u)*2) 0 #3a157a, calc(var(--u)*3) calc(var(--u)*3) 0 #000; }
   h2 { font-size: calc(var(--u)*9); font-weight: normal; line-height: 1.2;
@@ -77,7 +80,7 @@
   .btn.blink { animation: blink 1s steps(1) infinite; }
   .btn.locked { opacity: .35; pointer-events: none; animation: none; }
   .ctrl { font-size: calc(var(--u)*6); color: #7fe3ff; }
-  .bonus { font-size: calc(var(--u)*4.5); color: #ffe14d; margin-top: calc(var(--u)*2); margin-bottom: calc(var(--u)*-2); }
+  .bonus { font-size: calc(var(--u)*4.5); color: #ffe14d; margin-top: calc(var(--u)*2); margin-bottom: calc(var(--u)*-2.5); }
   .mob { display: none; }
   @media (pointer: coarse) { .desk { display: none; } .mob { display: inline; } .p { font-size: calc(var(--u)*4.2); } }
   .small { font-size: calc(var(--u)*3); color: #8f8ad6; }
@@ -108,23 +111,23 @@
 
   <div id="count"></div>
 
-  <div id="scrTitle" class="screen on shadow">
+  <div id="scrTitle" class="screen on shadow"><div class="inner">
     <h1>HELP<br>THE COW</h1>
-    <p class="p">Salvá a la vaca del OVNI antes de los 60 segundos.</p>
-    <div class="ctrl"><span class="desk">CLICK / ESPACIO</span><span class="mob">TAP</span></div>
-    <div class="bonus">BONUS</div>
-    <p class="p">Si aparece vaquita, subí a rescatarla y traela al pasto.</p>
+    <p class="p nw">Salva a la vaca del OVNI<br>antes de los 60 segundos.</p>
+    <div class="ctrl nw"><span class="desk">CLICK / ESPACIO</span><span class="mob">TAP</span></div>
+    <div class="bonus nw">BONUS VAQUITA</div>
+    <p class="p nw">Sube a rescatarla<br>y tráela al pasto.</p>
     <button class="btn blink" id="btnStart">PRESS START</button>
-    <div class="small" id="titleBest">RÉCORD 000000</div>
-    <div class="small">© 1985 VACA GAMES · 1 CRÉDITO</div>
-  </div>
+    <div class="small nw" id="titleBest">RÉCORD 000000</div>
+    <div class="small nw">© 1985 VACA GAMES · 1 CRÉDITO</div>
+  </div></div>
 
-  <div id="scrEnd" class="screen shadow">
-    <h2 id="endTitle" class="pink">¡ABDUCIDA!</h2>
-    <p class="p" id="endSub"></p>
-    <div class="stats" id="endStats"></div>
+  <div id="scrEnd" class="screen shadow"><div class="inner">
+    <h2 id="endTitle" class="pink nw">¡ABDUCIDA!</h2>
+    <p class="p nw" id="endSub"></p>
+    <div class="stats nw" id="endStats"></div>
     <button class="btn" id="btnAgain">OTRA VEZ</button>
-  </div>
+  </div></div>
 
   <div class="crt"></div>
   <div class="vig"></div>
@@ -147,9 +150,22 @@ const lerp = (a, b, k) => a + (b - a) * k;
 
 /* ---------- sizing: fill the whole window (landscape on desktop, portrait on phones) ---------- */
 let lastIW = 0, lastIH = 0;
+function fitScreens() {
+  document.querySelectorAll('.screen.on .inner').forEach(el => {
+    el.style.transform = 'none';
+    const sc = el.parentElement, cs = getComputedStyle(sc);
+    const aw = sc.clientWidth - parseFloat(cs.paddingLeft) * 2, ah = sc.clientHeight - parseFloat(cs.paddingTop) * 2;
+    const k = Math.min(1, aw / el.scrollWidth, ah / el.scrollHeight);
+    if (k < 1) el.style.transform = 'scale(' + k + ')';
+  });
+}
 function fit() {
   const vv = window.visualViewport;
   const iw = Math.round(vv ? vv.width : innerWidth), ih = Math.round(vv ? vv.height : innerHeight);
+  stage.style.left = (vv ? vv.offsetLeft : 0) + 'px'; stage.style.top = (vv ? vv.offsetTop : 0) + 'px';
+  stage.style.width = iw + 'px'; stage.style.height = ih + 'px';
+  stage.style.right = 'auto'; stage.style.bottom = 'auto';
+  fitScreens();
   if (iw === lastIW && ih === lastIH && W) return;
   lastIW = iw; lastIH = ih;
   window.scrollTo(0, 0);
@@ -165,7 +181,7 @@ function fit() {
   cv.width = W; cv.height = H;
   cv.style.width = W * s + 'px'; cv.style.height = H * s + 'px';
   document.documentElement.style.setProperty('--u', s + 'px');
-  paintBG(); makeStars();
+  paintBG(); makeStars(); fitScreens();
 }
 
 /* ---------- static background ---------- */
@@ -483,7 +499,7 @@ function showEnd() {
     'PUNTOS ' + pad(score) + '<br>' +
     '<span class="rank">' + rank + '</span>' +
     (isRec ? '<br><span class="rec">¡NUEVO RÉCORD!</span>' : '');
-  $('scrEnd').classList.add('on');
+  $('scrEnd').classList.add('on'); fitScreens();
   const b = $('btnAgain'); b.classList.add('locked');
   setTimeout(() => { b.classList.remove('locked'); b.classList.add('blink'); }, 1000);
 }
@@ -534,11 +550,11 @@ function update(dt) {
     if (calfTimes.length && elapsed >= calfTimes[0]) {
       calfTimes.shift();
       calf = { h: Math.min(0.72, Math.max(h + 0.3, 0.45)), st: 'float', ph: Math.random() * 6 };
-      flashMsg('¡UNA VAQUITA! ¡ALCANZALA!', 2.5, 'warn'); tune([784, 988, 1175], 0.08, 'square', 0.04);
+      flashMsg('¡UNA VAQUITA! ¡ALCÁNZALA!', 2.5, 'warn'); tune([784, 988, 1175], 0.08, 'square', 0.04);
     }
     if (calf && calf.st === 'float') {
       calf.h += 0.05 * dt * (surgeOn ? 1.5 : 1);
-      if (h >= calf.h - 0.12) { calf.st = 'carried'; flashMsg('¡LA TENÉS! ¡AHORA BAJALA!', 1.8, 'warn'); tune([659, 880], 0.08, 'square', 0.05); }
+      if (h >= calf.h - 0.12) { calf.st = 'carried'; flashMsg('¡LA TIENES! ¡AHORA BÁJALA!', 1.8, 'warn'); tune([659, 880], 0.08, 'square', 0.05); }
       else if (calf.h >= 1) { calf = null; flashMsg('¡SE LLEVARON LA VAQUITA!', 2, 'red'); tune([330, 262], 0.15, 'triangle', 0.06); }
     } else if (calf && calf.st === 'carried' && h <= 0.12) {
       saved++; score += 1500; calf = null;
@@ -649,7 +665,7 @@ function hud() {
     if (surgeOn) { m = '¡RAYO TURBO!'; }
     else if (warn) { m = '¡CUIDADO!'; cls = 'warn'; }
     else if (flash && T < flash.until) { m = flash.text; cls = flash.cls; }
-    else if (calf && calf.st === 'carried') { m = '¡BAJALA!'; cls = 'warn'; }
+    else if (calf && calf.st === 'carried') { m = '¡BÁJALA!'; cls = 'warn'; }
   }
   if (m) { els.msg.textContent = m; els.msg.className = 'on ' + cls; } else els.msg.className = '';
 }
@@ -668,6 +684,14 @@ if (window.visualViewport) { visualViewport.addEventListener('resize', refit); v
 fit();
 // mobile browsers settle their toolbars after load: re-measure a few times during the first seconds
 [150, 500, 1000, 2000].forEach(ms => setTimeout(refit, ms));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitScreens);
+// phones opened from a link (WhatsApp, etc.) can keep a shifted screen: reload once, one second after opening
+try {
+  if (matchMedia('(pointer: coarse)').matches && !sessionStorage.getItem('htc_reloaded')) {
+    sessionStorage.setItem('htc_reloaded', '1');
+    setTimeout(() => { if (state === 'title') location.reload(); }, 1000);
+  }
+} catch (e) {}
 requestAnimationFrame(frame);
 })();
 </script>
