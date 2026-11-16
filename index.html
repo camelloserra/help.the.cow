@@ -18,6 +18,12 @@
   }
   html, body { position: fixed; inset: 0; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #stage { position: fixed; inset: 0; overflow: hidden; cursor: pointer; }
+  /* link a Prohibido No Jugar: abajo a la izquierda, con la letra del juego */
+  #pnj { position: fixed; left: calc(var(--u)*5); bottom: calc(var(--u)*4); z-index: 30;
+    font-family: 'Press Start 2P', monospace; font-size: max(8px, calc(var(--u)*3)); line-height: 1;
+    color: #7fe3ff; text-decoration: none; }
+  #pnj:hover { color: #ffe14d; }
+
   canvas { position: absolute; left: 0; top: 0;
     image-rendering: pixelated; image-rendering: crisp-edges; }
   .crt { position: absolute; inset: 0; pointer-events: none; z-index: 20;
@@ -78,6 +84,36 @@
   .sum .tot { color: #ffe14d; font-size: calc(var(--u)*5); }
   .dim { color: #8f8ad6; font-size: calc(var(--u)*3); }
   .stats .rec { color: #ffe14d; animation: blink .4s steps(1) infinite; }
+  /* ranking mundial (ranking.js) */
+  .rk { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u)*3); }
+  .rk:empty { display: none; }
+  .pnj-form { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: calc(var(--u)*3); }
+  .pnj-label { width: 100%; text-align: center; font-size: calc(var(--u)*3.5); color: #7fe3ff; }
+  .pnj-input { font-family: inherit; font-size: calc(var(--u)*7); width: calc(var(--u)*44); padding: calc(var(--u)*2) 0 calc(var(--u)*2) calc(var(--u)*2.5);
+    letter-spacing: calc(var(--u)*2.5); text-align: center; text-transform: uppercase; color: #ffe14d; caret-color: #ffe14d;
+    background: #0b0a22; border: var(--u) solid #fff; border-radius: 0; outline: none; box-shadow: var(--u) var(--u) 0 #000; }
+  .pnj-input::placeholder { color: #3a3870; }
+  .pnj-input:focus { border-color: #ffe14d; }
+  .pnj-btn { font-family: inherit; font-size: calc(var(--u)*4); color: #0b0a22; background: #5cff7a; cursor: pointer;
+    border: var(--u) solid #fff; padding: calc(var(--u)*2.5) calc(var(--u)*4); box-shadow: var(--u) var(--u) 0 #000; }
+  .pnj-btn:hover { background: #8dffa3; }
+  .pnj-btn:active { transform: translate(var(--u), var(--u)); box-shadow: none; }
+  .pnj-btn:disabled { opacity: .45; pointer-events: none; }
+  .pnj-share { background: #7fe3ff; }
+  .pnj-share:hover { background: #b3f0ff; }
+  .pnj-msg { width: 100%; min-height: calc(var(--u)*3); text-align: center; font-size: calc(var(--u)*3); color: #ff6ad5; }
+  .pnj-board { display: flex; flex-direction: column; align-items: center; }
+  .pnj-title { font-size: calc(var(--u)*4); color: #7fe3ff; margin-bottom: calc(var(--u)*3); }
+  .pnj-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: auto auto auto;
+    column-gap: calc(var(--u)*5); row-gap: calc(var(--u)*1.5); font-size: calc(var(--u)*3.5); }
+  .pnj-list li { display: contents; }
+  .pnj-list .pos { text-align: right; color: #8f8ad6; }
+  .pnj-list .nm { text-align: left; color: #fff; }
+  .pnj-list .sc { text-align: right; color: #7fe3ff; }
+  .pnj-list li.me span { color: #ffe14d; animation: blink .5s steps(1) infinite; }
+  .pnj-list li.gap span { grid-column: 1 / -1; text-align: center; color: #8f8ad6; }
+  .pnj-you { margin-top: calc(var(--u)*3); font-size: calc(var(--u)*4.5); color: #ffe14d; }
+  .pnj-empty { font-size: calc(var(--u)*3.5); color: #8f8ad6; }
   .btn { font-family: inherit; font-size: calc(var(--u)*5); color: #fff; background: #ff3d7f; cursor: pointer;
     border: var(--u) solid #fff; padding: calc(var(--u)*3) calc(var(--u)*5);
     box-shadow: var(--u) var(--u) 0 #000, calc(var(--u)*2) calc(var(--u)*2) 0 #3a157a; }
@@ -102,6 +138,7 @@
 </style>
 </head>
 <body>
+<a id="pnj" class="shadow" href="/" title="Prohibido No Jugar">ProhibidoNoJugar</a>
 <div id="stage">
   <canvas id="c"></canvas>
   <div id="danger"></div>
@@ -133,6 +170,7 @@
     <h2 id="endTitle" class="pink nw">¡ABDUCIDA!</h2>
     <p class="p nw" id="endSub"></p>
     <div class="stats nw" id="endStats"></div>
+    <div class="rk" id="rk"></div>
     <button class="btn" id="btnAgain">OTRA VEZ</button>
   </div></div>
 
@@ -140,6 +178,7 @@
   <div class="vig"></div>
 </div>
 
+<script src="/ranking.js"></script>
 <script>
 (() => {
 const $ = id => document.getElementById(id);
@@ -446,6 +485,41 @@ try { best = parseInt(localStorage.getItem('htc_best') || '0', 10) || 0; } catch
 const pad = n => String(n).padStart(6, '0');
 $('titleBest').textContent = 'RÉCORD ' + pad(best);
 
+/* ---------- ranking mundial ---------- */
+const GAME = 'help-the-cow';
+let worldBest = 0;
+function loadWorld() {
+  if (!window.PNJ) return;
+  PNJ.ranking(GAME).then(d => { if (d.top && d.top[0]) worldBest = Math.max(worldBest, +d.top[0].score); }).catch(() => {});
+}
+loadWorld();
+function showRanking(d) {
+  const rk = $('rk'); rk.innerHTML = '';
+  $('endSub').style.display = 'none';
+  if (d.top && d.top[0]) worldBest = Math.max(worldBest, +d.top[0].score);
+  rk.appendChild(PNJ.board(d, {
+    title: 'RANKING MUNDIAL', format: v => pad(Math.round(v)),
+    youLabel: (p, t) => 'PUESTO #' + p + ' DE ' + t
+  }));
+  if (d.me) rk.appendChild(PNJ.shareButton({
+    label: 'COMPARTIR', copied: '¡COPIADO!',
+    text: () => '🐄🛸 Mi récord en HELP THE COW: ' + Math.round(d.me.score) + ' puntos. Estoy en el puesto #' + d.me.pos + ' del ranking mundial. ¿Me ganás?'
+  }));
+  fitScreens();
+}
+function askName() {
+  const rk = $('rk'); rk.innerHTML = '';
+  $('endSub').style.display = '';
+  if (!window.PNJ || score <= 0) return;
+  const f = PNJ.nameForm({
+    label: 'TU NOMBRE PARA EL RANKING', button: 'GUARDAR', saving: 'GUARDANDO…',
+    tooFast: 'ESPERÁ UNOS SEGUNDOS', error: 'NO SE PUDO GUARDAR. PROBÁ DE NUEVO.',
+    onSubmit: async n => showRanking(await PNJ.submit(GAME, '', n, score))
+  });
+  rk.appendChild(f);
+  if (!matchMedia('(pointer: coarse)').matches) setTimeout(() => f.focusInput(), 50);
+}
+
 const rate = t => 0.10 + 0.19 * Math.pow(t / DUR, 1.3) + 0.02 * Math.sin(t * 1.9);
 
 function start() {
@@ -509,6 +583,7 @@ function showEnd() {
     '</div>' +
     '<div class="rank">' + rank + '</div>' +
     (isRec ? '<div class="rec">¡NUEVO RÉCORD!</div>' : '');
+  askName();
   $('scrEnd').classList.add('on'); fitScreens();
   const b = $('btnAgain'); b.classList.add('locked');
   setTimeout(() => { b.classList.remove('locked'); b.classList.add('blink'); }, 1000);
@@ -662,7 +737,7 @@ function hud() {
   els.time.textContent = String(left).padStart(2, '0');
   els.time.classList.toggle('hot', left <= 10 && state === 'play');
   els.score.textContent = pad(score);
-  els.best.textContent = pad(Math.max(best, score));
+  els.best.textContent = pad(Math.max(best, worldBest, score));
   const p = Math.min(1, h);
   els.fill.style.height = (p * 100) + '%';
   els.fill.style.background = p < 0.5 ? '#5cff7a' : p < 0.8 ? '#ffe14d' : '#ff3d5a';
